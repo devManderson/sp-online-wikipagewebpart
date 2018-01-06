@@ -182,6 +182,8 @@ namespace sp_online_wikipagewebpart
 
                         SetViewForWebpart(wikiLib.RootFolder.ServerRelativeUrl + "/" + fileName, context, list, wp.WebPartTitle);
 
+
+
                     }
                     catch (Exception e)
                     {
@@ -205,6 +207,10 @@ namespace sp_online_wikipagewebpart
 
         private static void AddWebPartToWikiPage(ClientContext ctx, string fileUrl, WebPartEntity webPart, int row, int col, bool addSpace)
         {
+            _log.Debug("Inside AddWebPartToWikiPage");
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
             File webPartPage = ctx.Web.GetFileByServerRelativeUrl(fileUrl);
 
             if (webPartPage == null)
@@ -219,11 +225,13 @@ namespace sp_online_wikipagewebpart
             string wikiField = (string)webPartPage.ListItemAllFields["WikiField"];
 
             LimitedWebPartManager limitedWebPartManager = webPartPage.GetLimitedWebPartManager(PersonalizationScope.Shared);
+            ctx.Load(limitedWebPartManager);
+            ctx.ExecuteQuery();
+
             WebPartDefinition oWebPartDefinition = limitedWebPartManager.ImportWebPart(webPart.WebPartXml);
             WebPartDefinition wpdNew = limitedWebPartManager.AddWebPart(oWebPartDefinition.WebPart, "wpz", 0);
             ctx.Load(wpdNew);
             ctx.ExecuteQuery();
-
 
             XmlDocument xd = new XmlDocument();
             xd.PreserveWhitespace = true;
@@ -283,6 +291,8 @@ namespace sp_online_wikipagewebpart
             listItem.Update();
             ctx.ExecuteQuery();
 
+            stopwatch.Stop();
+            _log.Debug($"It took {stopwatch.Elapsed} to create the webpart");
         }
 
         private static string CreateXML(string listId, string listName, string title)
@@ -327,8 +337,10 @@ namespace sp_online_wikipagewebpart
         private static bool SetViewForWebpart(string fileUrl, ClientContext context, List list, string webpartName)
         {
             //Setup
-            bool result = false;
-            _log.Debug("Inside ListViewWebPartHelper.SetViewForWebpart");
+            bool result = true;
+            _log.Debug("Inside SetViewForWebpart");
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             try
             {
@@ -402,19 +414,18 @@ namespace sp_online_wikipagewebpart
                         listView.TabularView = false;
                         listView.Update();
                         context.ExecuteQueryRetry();
-
-                        result = true;
-                        break;
                     }
                 }
-
-                return result;
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error inside ListViewWebPartHelper.SetViewForWebpart");
-                return false;
+                result = false;
+                _log.Error(e, "Error inside SetViewForWebpart");
             }
+
+            stopwatch.Stop();
+            _log.Debug($"It took {stopwatch.Elapsed} to set the view");
+            return true;
         }
     }
 }
